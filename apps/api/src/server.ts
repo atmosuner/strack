@@ -1,6 +1,5 @@
 import cors from "@fastify/cors";
 import jwt from "@fastify/jwt";
-import rawBody from "fastify-raw-body";
 import Fastify, { type FastifyInstance } from "fastify";
 
 import { getEnv } from "./env.js";
@@ -32,7 +31,23 @@ export async function buildApp(): Promise<FastifyInstance> {
     sign: { expiresIn: "7d" },
   });
 
-  await app.register(rawBody, { field: "rawBody", global: false, runFirst: true });
+  // Raw body support for Stripe webhook — store raw body on requests with stripe-signature header
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (req, body, done) => {
+      try {
+        const json = JSON.parse(body as string);
+        // Attach raw body for Stripe webhook verification
+        if (req.headers["stripe-signature"]) {
+          (req as unknown as Record<string, unknown>).rawBody = body;
+        }
+        done(null, json);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    }
+  );
 
   app.get("/health", async () => ({
     ok: true,
