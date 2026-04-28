@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Family Private Class Tracker",
+    "slug": "family-private-class-tracker",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "fpct",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-secure-store"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "start": "cross-env CI=false expo start",
+    "start:8082": "cross-env CI=false expo start --port 8082",
+    "start:tunnel": "cross-env CI=false expo start --tunnel",
+    "android": "cross-env CI=false expo start --android",
+    "ios": "cross-env CI=false expo start --ios",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"no tests yet\""
+  },
+  "dependencies": {
+    "expo": "~52.0.0",
+    "expo-secure-store": "^14.0.1",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.9"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "~18.3.12",
+    "cross-env": "^10.1.0",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "family-private-class-tracker",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "pnpm --filter api typecheck && pnpm --filter mobile typecheck && pnpm --filter web typecheck && pnpm --filter @fpct/shared typecheck",
+    "test": "pnpm -r run test",
+    "build": "pnpm -r run build",
+    "dev:api": "pnpm --filter api dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "dev:mobile:tunnel": "pnpm --filter mobile run start:tunnel",
+    "dev:web": "pnpm --filter web dev"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0"
+  }
+}
