@@ -4,7 +4,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @fpct/shared build && pnpm --filter api run build
+    buildCommand: NODE_ENV= pnpm install --frozen-lockfile && pnpm --filter @fpct/shared build && pnpm --filter api run build
     startCommand: node apps/api/dist/index.js
     envVars:
       - key: NODE_ENV
