@@ -1,193 +1,266 @@
 import { useCallback, useEffect, useState } from "react";
-import { useAuth } from "../lib/auth";
-import { apiJson } from "../lib/api";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth";
+import { apiJson } from "@/lib/api";
+import { Pencil, Trash2, Plus, X, Check } from "lucide-react";
 
-type Invitation = {
-  id: string;
-  email: string;
-  status: string;
-  role: string;
-  createdAt: string;
-};
+type Item = { id: string; name: string; notes: string | null; archived: boolean };
+
+function ManageSection({
+  title,
+  endpoint,
+  token,
+  householdId,
+}: {
+  title: string;
+  endpoint: "children" | "providers";
+  token: string;
+  householdId: string;
+}) {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const base = `/households/${householdId}/${endpoint}`;
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiJson<{ [k: string]: Item[] }>(base, { token });
+      setItems(data[endpoint] ?? []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [base, token, endpoint]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleAdd() {
+    if (!newName.trim() || busy) return;
+    setBusy(true);
+    try {
+      await apiJson(base, {
+        method: "POST",
+        token,
+        body: JSON.stringify({ name: newName.trim() }),
+      });
+      setNewName("");
+      setAdding(false);
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRename(id: string) {
+    if (!editName.trim() || busy) return;
+    setBusy(true);
+    try {
+      await apiJson(`${base}/${id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      setEditId(null);
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleArchive(id: string) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await apiJson(`${base}/${id}`, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ archived: true }),
+      });
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const label = endpoint === "children" ? "child" : "tutor";
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">{title}</CardTitle>
+          {!adding && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 gap-1 text-xs"
+              onClick={() => {
+                setAdding(true);
+                setEditId(null);
+              }}
+            >
+              <Plus className="size-3.5" /> Add
+            </Button>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {adding && (
+          <div className="flex items-center gap-2">
+            <Input
+              autoFocus
+              placeholder={`${label} name`}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleAdd();
+                if (e.key === "Escape") setAdding(false);
+              }}
+              className="h-9 text-sm"
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 shrink-0"
+              disabled={busy || !newName.trim()}
+              onClick={() => void handleAdd()}
+            >
+              <Check className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="size-8 shrink-0"
+              onClick={() => {
+                setAdding(false);
+                setNewName("");
+              }}
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        )}
+
+        {loading ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">
+            Loading…
+          </p>
+        ) : items.length === 0 && !adding ? (
+          <p className="py-3 text-center text-sm text-muted-foreground">
+            No {endpoint} yet. Tap Add to create one.
+          </p>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="flex items-center gap-2 rounded-lg border px-3 py-2"
+            >
+              {editId === item.id ? (
+                <>
+                  <Input
+                    autoFocus
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") void handleRename(item.id);
+                      if (e.key === "Escape") setEditId(null);
+                    }}
+                    className="h-8 flex-1 text-sm"
+                  />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 shrink-0"
+                    disabled={busy || !editName.trim()}
+                    onClick={() => void handleRename(item.id)}
+                  >
+                    <Check className="size-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 shrink-0"
+                    onClick={() => setEditId(null)}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="flex-1 text-sm">{item.name}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      setEditId(item.id);
+                      setEditName(item.name);
+                      setAdding(false);
+                    }}
+                  >
+                    <Pencil className="size-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => void handleArchive(item.id)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export function FamilyView() {
   const { session } = useAuth();
-  const [email, setEmail] = useState("");
-  const [acceptToken, setAcceptToken] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  const isOwner = session?.role === "OWNER";
-
-  const fetchInvitations = useCallback(async () => {
-    if (!session || !isOwner) return;
-    try {
-      const data = await apiJson<{ invitations: Invitation[] }>(
-        `/invitations?householdId=${session.householdId}`,
-        { token: session.token }
-      );
-      setInvitations(data.invitations);
-    } catch {}
-  }, [session, isOwner]);
-
-  useEffect(() => {
-    void fetchInvitations();
-  }, [fetchInvitations]);
 
   if (!session) {
     return (
-      <div className="flex items-center justify-center h-64 text-gray-400">
-        Sign in to manage family members.
-      </div>
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="pt-6 text-center text-sm text-muted-foreground">
+          Sign in from the Account tab to manage your family.
+        </CardContent>
+      </Card>
     );
   }
 
-  const handleSend = async () => {
-    if (!email.trim()) return;
-    setLoading(true);
-    setMsg(null);
-    try {
-      await apiJson("/invitations", {
-        method: "POST",
-        token: session.token,
-        body: JSON.stringify({
-          householdId: session.householdId,
-          email: email.trim(),
-        }),
-      });
-      setMsg(`Invitation sent to ${email.trim()}`);
-      setEmail("");
-      void fetchInvitations();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Failed to send");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleRevoke = async (id: string) => {
-    try {
-      await apiJson(`/invitations/${id}`, {
-        method: "DELETE",
-        token: session.token,
-      });
-      void fetchInvitations();
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Failed to revoke");
-    }
-  };
-
-  const handleAccept = async () => {
-    if (!acceptToken.trim()) return;
-    setLoading(true);
-    setMsg(null);
-    try {
-      const res = await apiJson<{ message: string }>(
-        "/invitations/accept",
-        {
-          method: "POST",
-          token: session.token,
-          body: JSON.stringify({ token: acceptToken.trim() }),
-        }
-      );
-      setMsg(res.message);
-      setAcceptToken("");
-    } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : "Failed to accept");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <h2 className="text-xl font-semibold">Family Members</h2>
-
-      {msg && (
-        <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
-          {msg}
-        </div>
-      )}
-
-      {/* Accept invitation */}
-      <div className="rounded-xl border p-4 space-y-3">
-        <h3 className="font-medium">Accept an Invitation</h3>
-        <div className="flex gap-2">
-          <input
-            className="flex-1 border rounded-lg px-3 py-2 text-sm"
-            placeholder="Paste invitation token…"
-            value={acceptToken}
-            onChange={(e) => setAcceptToken(e.target.value)}
-          />
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-            disabled={loading}
-            onClick={handleAccept}
-          >
-            Accept
-          </button>
-        </div>
-      </div>
-
-      {/* Send invitation — owner only */}
-      {isOwner && (
-        <div className="rounded-xl border p-4 space-y-3">
-          <h3 className="font-medium">Invite a Family Member</h3>
-          <div className="flex gap-2">
-            <input
-              className="flex-1 border rounded-lg px-3 py-2 text-sm"
-              placeholder="Email address"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-              disabled={loading}
-              onClick={handleSend}
-            >
-              Send
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Invitation list — owner only */}
-      {isOwner && (
-        <div className="rounded-xl border divide-y">
-          <div className="px-4 py-3 bg-gray-50 rounded-t-xl">
-            <h3 className="font-medium text-sm text-gray-700">Sent Invitations</h3>
-          </div>
-          {invitations.length === 0 ? (
-            <div className="px-4 py-8 text-center text-sm text-gray-400">
-              No invitations sent yet.
-            </div>
-          ) : (
-            invitations.map((inv) => (
-              <div
-                key={inv.id}
-                className="flex items-center justify-between px-4 py-3"
-              >
-                <div>
-                  <div className="text-sm">{inv.email}</div>
-                  <div className="text-xs text-gray-500">
-                    {inv.status} &middot; {inv.role}
-                  </div>
-                </div>
-                {inv.status === "PENDING" && (
-                  <button
-                    className="text-red-600 text-sm font-medium"
-                    onClick={() => handleRevoke(inv.id)}
-                  >
-                    Revoke
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      )}
+    <div className="space-y-4">
+      <ManageSection
+        title="Children"
+        endpoint="children"
+        token={session.token}
+        householdId={session.householdId}
+      />
+      <ManageSection
+        title="Tutors"
+        endpoint="providers"
+        token={session.token}
+        householdId={session.householdId}
+      />
     </div>
   );
 }
