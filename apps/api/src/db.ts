@@ -1,4 +1,10 @@
 import { PrismaClient } from "@prisma/client";
+import { PrismaNeon } from "@prisma/adapter-neon";
+import { Pool } from "@neondatabase/serverless";
+import ws from "ws";
+import { neonConfig } from "@neondatabase/serverless";
+
+neonConfig.webSocketConstructor = ws;
 
 let prisma: PrismaClient | undefined;
 
@@ -8,10 +14,9 @@ export function getPrisma(): PrismaClient {
     throw new Error("DATABASE_URL is required for database access");
   }
   if (!prisma) {
-    prisma = new PrismaClient({
-      datasources: { db: { url } },
-      log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-    });
+    const pool = new Pool({ connectionString: url });
+    const adapter = new PrismaNeon(pool);
+    prisma = new PrismaClient({ adapter } as any);
   }
   return prisma;
 }

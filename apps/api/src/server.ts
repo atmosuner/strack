@@ -19,8 +19,12 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   const app = Fastify({ logger: true });
 
+  const allowedOrigins = env.CORS_ORIGINS
+    ? env.CORS_ORIGINS.split(",").map((o) => o.trim())
+    : true;
+
   await app.register(cors, {
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],

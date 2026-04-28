@@ -11,6 +11,8 @@ const schema = z.object({
     .string()
     .min(16)
     .default("dev-only-jwt-secret-change-me"),
+  /** Comma-separated list of allowed CORS origins. If unset, all origins are allowed. */
+  CORS_ORIGINS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof schema>;
