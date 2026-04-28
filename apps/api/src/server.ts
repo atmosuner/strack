@@ -9,6 +9,7 @@ import { authRoutes } from "./routes/auth.js";
 import { householdChildrenRoutes } from "./routes/children.js";
 import { householdProvidersRoutes } from "./routes/providers.js";
 import { householdLessonsRoutes } from "./routes/lessons.js";
+import { householdRoutes } from "./routes/households.js";
 import { calendarRoutes } from "./routes/calendar.js";
 import { invitationRoutes } from "./routes/invitations.js";
 import { reminderRoutes } from "./routes/reminders.js";
@@ -60,6 +61,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await app.register(authRoutes, { prefix: "/auth" });
 
+  await app.register(householdRoutes, {
+    prefix: "/households/:householdId",
+  });
   await app.register(householdChildrenRoutes, {
     prefix: "/households/:householdId/children",
   });

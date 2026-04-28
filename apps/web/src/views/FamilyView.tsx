@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/api";
-import { Pencil, Trash2, Plus, X, Check } from "lucide-react";
+import { Pencil, Trash2, Plus, X, Check, Home } from "lucide-react";
 
 type Item = { id: string; name: string; notes: string | null; archived: boolean };
 
@@ -234,6 +234,165 @@ function ManageSection({
   );
 }
 
+type Member = {
+  id: string;
+  role: string;
+  createdAt: string;
+  user: { id: string; email: string };
+};
+
+function HouseholdSection({
+  token,
+  householdId,
+}: {
+  token: string;
+  householdId: string;
+}) {
+  const [name, setName] = useState("");
+  const [members, setMembers] = useState<Member[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const base = `/households/${householdId}`;
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiJson<{
+        household: { id: string; name: string };
+        members: Member[];
+      }>(base, { token });
+      setName(data.household.name);
+      setMembers(data.members);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }, [base, token]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleRename() {
+    if (!editName.trim() || busy) return;
+    setBusy(true);
+    try {
+      await apiJson(base, {
+        method: "PATCH",
+        token,
+        body: JSON.stringify({ name: editName.trim() }),
+      });
+      setEditing(false);
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRemoveMember(memberId: string) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await apiJson(`${base}/members/${memberId}`, {
+        method: "DELETE",
+        token,
+      });
+      await load();
+    } catch {
+      // ignore
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <Home className="size-4 text-muted-foreground" />
+          {editing ? (
+            <div className="flex flex-1 items-center gap-2">
+              <Input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void handleRename();
+                  if (e.key === "Escape") setEditing(false);
+                }}
+                className="h-8 text-sm"
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0"
+                disabled={busy || !editName.trim()}
+                onClick={() => void handleRename()}
+              >
+                <Check className="size-3.5" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0"
+                onClick={() => setEditing(false)}
+              >
+                <X className="size-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <CardTitle className="flex-1 text-base">{name}</CardTitle>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0 text-muted-foreground"
+                onClick={() => {
+                  setEditName(name);
+                  setEditing(true);
+                }}
+              >
+                <Pencil className="size-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Members</p>
+        {members.map((m) => (
+          <div
+            key={m.id}
+            className="flex items-center gap-2 rounded-lg border px-3 py-2"
+          >
+            <span className="flex-1 text-sm">{m.user.email}</span>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {m.role.toLowerCase()}
+            </span>
+            {m.role !== "OWNER" && (
+              <Button
+                size="icon"
+                variant="ghost"
+                className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                onClick={() => void handleRemoveMember(m.id)}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function FamilyView() {
   const { session } = useAuth();
 
@@ -249,6 +408,10 @@ export function FamilyView() {
 
   return (
     <div className="space-y-4">
+      <HouseholdSection
+        token={session.token}
+        householdId={session.householdId}
+      />
       <ManageSection
         title="Children"
         endpoint="children"
