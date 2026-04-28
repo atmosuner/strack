@@ -31,6 +31,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: Build Shared
+        run: pnpm --filter @fpct/shared build
+
       - name: Build web app
         run: pnpm --filter web build
         env:
